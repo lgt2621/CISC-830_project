@@ -112,7 +112,25 @@ TODO update when actual execution stabalizes
 
 To verify that a log represents a correct execution of the binary simply run project.py as follows:
 
-    python project.py "cfg-file" "log-file" name
+    python project.py --cfg_file=./path/to/cfg_file.pickle --log_file=./path/to/log_file.cflog
+
+To use multiple processes, add the optional flag --workers=NUMBER_OF_PROCESSES
+
+To print out additional information, add the optional flag --verbose
     
 where cfg-file is the cfg of the program the log represents, log-file is the log to be verified, and n is the number of threads to use for the verification. To verify the 
 log, the program splits the log into n sections and gives each section to a thread. Each thread runs through its portion verifiying that the source address is the end appropriate end address of the node jumped to in the previous entry, the source address is a valid branching instruction, and the destination is a valid destination for the source address. Each log portion, excpet the final portion, actually contian (log_size/n) + 1 entries. This creates a single entry of overlap between the threads data allowing us to verify the correct execution across threads as well. Each thread stores the reuslts of their check in a shared list. If any thread detects an issue, it stores a 0 in the shared array. After all threads finished, the shared array is ANDed together to determine if the log represents a valid execution of the binary.
+
+## Timing
+
+Generate a profile
+
+    python -m cProfile -o output.pstats script.py
+
+Generate a nice little graph (optional)
+
+    gprof2dot --colour-nodes-by-selftime -f pstats output.pstats | dot -Tpng -o output.png
+
+Run several experiments and compare their times
+
+    python timing_experiment.py --cfg_file=./path/to/cfg_file.pickle --log_file=./path/to/log_file.cflog
