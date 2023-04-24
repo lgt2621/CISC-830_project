@@ -69,15 +69,19 @@ def main():
 	end_dict = build_end_dict(cfg)
 	log = load_log(LOG_FILE)
 
-	results = [1] * WORKERS
+	#results = [1] * WORKERS
+	manager = multiprocessing.Manager()
+	results = manager.list([1]*WORKERS)
 	log_size = len(log)
 	step = log_size // WORKERS
 
 	# We overlap the logs by one entry to ensure the correct execution of noded between two different threads data
 	iterable = [
     (
+		i,
 		end_dict,
-		log[step * i:min(step * (i + 1), log_size)],
+		log[step * i:min(step * (i + 1)+1, log_size)],
+		results,
 		VERBOSE,
 	)
     	 for i in range(WORKERS)
@@ -86,6 +90,7 @@ def main():
 		pool.starmap(verify_log_multi_threaded, iterable)
 
 
+	print(results)
 	final_result = all(results)
 	if final_result:
 		print("Verification Successful")

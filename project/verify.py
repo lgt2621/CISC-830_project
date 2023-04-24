@@ -7,7 +7,7 @@ import typing as tp
 from structures import CFGNode
 
 
-def verify_log_multi_threaded(cfg_dict: tp.Dict[str, CFGNode], log: tp.List[tp.Tuple[str, str]], verbose: bool = False) -> bool:
+def verify_log_multi_threaded(id: int, cfg_dict: tp.Dict[str, CFGNode], log: tp.List[tp.Tuple[str, str]], result: tp.List[int], verbose: bool = False) -> bool:
 	"""
 	Function to verify a portion of the control flow log. The function
 		first checks that the src is a valid branching address (i.e. it is a key in the dictionary).
@@ -34,14 +34,17 @@ def verify_log_multi_threaded(cfg_dict: tp.Dict[str, CFGNode], log: tp.List[tp.T
 		try: 
 			currrent_node = cfg_dict[l[0]]
 		except KeyError:
+			result[id] = 0
 			return False
 		
 		# Check that the destination is a valid address
 		if l[1] not in currrent_node.successors:
+			result[id] = 0
 			return False
 
 		# Check that the node properly executed
 		elif previous is not None and previous != currrent_node.start_addr:
+			result[id] = 0
 			return False
 
 	return True
