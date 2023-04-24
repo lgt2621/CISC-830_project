@@ -1,46 +1,65 @@
 from argparse import ArgumentParser
-import multiprocessing
-from pprint import pprint
-import subprocess
+from pathlib import Path
 import time
 
+try:
+	from tqdm import tqdm
+except ImportError:
+	tqdm = lambda *args, **kwargs: args[0]
 
-def main():
-	# Would probably be better to save this information into a csv file or something
+import project
 
-	args = ["python", "project.py", f"--cfg_file={CFG_FILE}", f"--log_file={LOG_FILE}"]
 
-	r = []
-	for w in WORKERS:
-		r.append(0)
-		for _ in range(TRIALS):
+workers = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40]
+
+
+def main(cfg_file: str, log_file: str, trials: int, results_file: str = "results.csv"):
+	results_file = Path(results_file)
+	with open(results_file, "w") as handle:
+		handle.write(f"workers,{','.join(map(str, range(1, trials + 1)))}\n")
+
+	for w in tqdm(workers, leave=True):
+		r = []
+		for _ in tqdm(list(range(trials)), leave=False):
 			s = time.time()
-			a = args + [f"--workers={w}"]
-			result = subprocess.run(a, capture_output=True, text=True)
-			stdout = str(result.stdout)
-			stderr = str(result.stderr)
-			if stderr:
-				print(f"Error:\n\t{stdout=}\n\t{stderr=}")
+			success = project.main(cfg_file, log_file, w, False)
+			if not success:
+				raise Exception(f"Hmmmm not sure what to do about this.")
+			r.append(time.time() - s)
 
-			r[-1] += time.time() - s
+		with open(results_file, "a") as handle:
+			handle.write(f"{w},{','.join(map(str, r))}\n")
 
-		r[-1] = r[-1] / TRIALS
+	with open(results_file, "a") as handle:
+		handle.write("\n")
 
-	print("workers,time")
-	pprint([(_w, _r) for _w, _r in zip(WORKERS, r)])
+
+def multi(trials):
+	names = ["pump"]  # ["demo", "pump", "temperature", "ultra"]
+	sizes = [100000, 1000000, 10000000]  # [10, 100, 1000, 1000000, 1000000]
+	for name in names:
+		cfg_file = Path(f"../cfgs/{name}.pickle")
+		for size in sizes:
+			out = Path(f"output/{name}/{size}")
+			out.mkdir(parents=True, exist_ok=True)
+			print(out.as_posix())
+			name = "other_demo" if name == "demo" else name
+			log_file = Path(f"../logs/{name}/pruned_{size}.cflog")
+			try:
+				main(cfg_file, log_file, trials, out / f"{trials}.csv")
+			except Exception as e:
+				print(e)
 
 
 if __name__ == "__main__":
 	parser = ArgumentParser()
-	parser.add_argument("--cfg_file", type=str)
-	parser.add_argument("--log_file", type=str)
+	parser.add_argument("--multi", action="store_true")
+	parser.add_argument("--cfg_file", type=str, required=False)
+	parser.add_argument("--log_file", type=str, required=False)
 	parser.add_argument("--trials", type=int, default=1)
 	args = parser.parse_args()
-
-	CFG_FILE = args.cfg_file
-	LOG_FILE = args.log_file
-	TRIALS = args.trials
-	WORKERS = [i for i in range(1, multiprocessing.cpu_count() + 1)]
-
-	main()
+	if args.multi:
+		multi(args.trials)
+	else:
+		main(args.cfg_file, args.log_file, args.trials)
 

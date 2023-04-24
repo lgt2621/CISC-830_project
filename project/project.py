@@ -58,39 +58,44 @@ def load_log(filename: str) -> tp.List[tp.Tuple[str, str]]:
 	return log
  
 
-def main():
+def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 
-	if VERBOSE:
-		print(f"{CFG_FILE=}")
-		print(f"{LOG_FILE=}")
-		print(f"{WORKERS=}")
-	
-	cfg = load_cfg(CFG_FILE)
+	workers = min(workers, multiprocessing.cpu_count())
+
+	if verbose:
+		print(f"{cfg_file=}")
+		print(f"{log_file=}")
+		print(f"{workers=}")
+
+	cfg = load_cfg(cfg_file)
 	end_dict = build_end_dict(cfg)
-	log = load_log(LOG_FILE)
+	log = load_log(log_file)
 
-	results = [1] * WORKERS
+	results = [1] * workers
 	log_size = len(log)
-	step = log_size // WORKERS
+	step = log_size // workers
 
 	# We overlap the logs by one entry to ensure the correct execution of noded between two different threads data
 	iterable = [
-    (
+	(
 		end_dict,
 		log[step * i:min(step * (i + 1), log_size)],
-		VERBOSE,
+		verbose,
 	)
-    	 for i in range(WORKERS)
-    ]
-	with multiprocessing.Pool(processes=WORKERS) as pool:
+		 for i in range(workers)
+	]
+	with multiprocessing.Pool(processes=workers) as pool:
 		pool.starmap(verify_log_multi_threaded, iterable)
 
 
 	final_result = all(results)
-	if final_result:
-		print("Verification Successful")
-	else:
-		print("verification Failed")
+	if verbose:
+		if final_result:
+			print("Verification Successful")
+		else:
+			print("verification Failed")
+
+	return final_result
 
 
 if __name__ == "__main__":
@@ -100,10 +105,4 @@ if __name__ == "__main__":
 	parser.add_argument("--workers", type=int, default=1)
 	parser.add_argument("--verbose", action="store_true")
 	args = parser.parse_args()
-
-	CFG_FILE = args.cfg_file
-	LOG_FILE = args.log_file
-	WORKERS = min(args.workers, multiprocessing.cpu_count())
-	VERBOSE = args.verbose
-
-	main()
+	main(args.cfg_file, args.log_file, args.workers, args.verbose)
