@@ -1,5 +1,40 @@
 # Intro
-    TODO
+
+Run-time software attacks allow an adversary to remotely alter the intended behavior of a
+program after its deployment. These attacks abuse existing control flow instructions within the
+binary (calls, jumps, returns, etc.) to jump to arbitrary memory addresses within the binary. One
+prominent vulnerability example is the buffer overflow. A buffer overflow occurs when data is
+written beyond the buffer’s allocated space and corrupts adjacent memory. This can potentially
+overwrite the return address on the stack and be used to bypass safety/security checks in the
+system. This leads to attacks like control flow-hijacking, code injection, and Return Oriented
+Programming (ROP).
+
+One way to mitigate these run-time attacks is with Control Flow Attestation (CFA). CFA allows
+for verification that a program on a remote device executed correctly. CFA extends the idea of
+Remote Attestation (RA): a challenge-response protocol in which a trusted verifier checks the
+state of a remote untrusted prover. In RA the prover computes an authenticated integrity check
+of its memory. The verifier then compares this against the expected binary to see if the device is
+compromised. When using CFA, the prover also maintains a log of control flow transfers during
+execution and sends the log to the verifier as well. The verifier then parses this log to determine
+if the binary performed a benign/expected execution.
+
+While CFA is an effective detective control, parsing the generated control flow log can be slow.
+As the binary becomes more complex, so too does the control flow log. Due to this, the size of
+the log grows exponentially as the binary grows. Most CFA schemes simply parse the
+generated log as part of the main process. As such as the binary and log get larger, it takes
+more time to verify if the expected execution occurred. This can be an issue for multiple
+reasons. First CFA is entirely detective and thus does not prevent any attack from continuing.
+So the longer it takes to parse the log, the more time the adversary has to interfere with the
+device without detection. Second, even if the device isn’t compromised in some schemes the
+prover must wait for the verifier’s response before continuing execution. In both scenarios
+longer wait times have negative impacts on security and performance.
+
+In this project we split the validation of the log across multiple workers to improve performance. Each worker 
+verifies that their subsection of the program executed correctly and that the transfer between workers is valid. 
+Once completed, the main process verifies that all workers sections were correct. If all are correct we know that
+the log represents a valid execution of the program. Otherwise if an error is detected by one of the workers we 
+know that this log represents an invalid flow. Similarly as the log is split sequentially, this could be eaisily 
+modifiable to narrow down where in the log the issue occured
 
 ### Directory structures
     ├── cfgs
@@ -85,7 +120,7 @@ in a sink and repeating that same entry for the majority of the log, we prune th
 This allows for the log entries to be more varied, mimicing a larger program/run even if it there really are only a handful of possible paths.
 
 #### overflowx.cflog
-    TODO
+Overflow logs represent invalid control flows within the binary such as one caused by a buffer overflow. However for the sake of testing these are simply valid logs where some of the entries have been tampered with. These logs follow a similar naming convention to the pruned log where the x indicates how many entries are in the logs.
 
 ## Generating Logs
 To generate these logs we use log_generator.py. To simply create a regular log run:

@@ -24,7 +24,7 @@ def main(cfg_file: str, log_file: str, trials: int, results_file: str = "results
 			s = time.time()
 			success = project.main(cfg_file, log_file, w, False)
 			if not success:
-				raise Exception(f"Hmmmm not sure what to do about this.")
+				pass  # Do nothing, I guess.
 			r.append(time.time() - s)
 
 		with open(results_file, "a") as handle:

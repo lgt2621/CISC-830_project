@@ -59,6 +59,15 @@ def load_log(filename: str) -> tp.List[tp.Tuple[str, str]]:
  
 
 def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
+	"""Verrify a log file.
+	Args:
+		cfg_file (str): the name of the file contianing the control flow graph
+		log_file (str): the log file to verify
+		workers (int): number of processes to spawn
+		verbose (bool): print out info
+	Returns:
+		bool: True if the log file is valid
+	"""
 
 	workers = min(workers, multiprocessing.cpu_count())
 
@@ -71,22 +80,24 @@ def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 	end_dict = build_end_dict(cfg)
 	log = load_log(log_file)
 
-	results = [1] * workers
+	manager = multiprocessing.Manager()
+	results = manager.list([1] * workers)
 	log_size = len(log)
 	step = log_size // workers
 
 	# We overlap the logs by one entry to ensure the correct execution of noded between two different threads data
 	iterable = [
-	(
+    (
+		i,
 		end_dict,
-		log[step * i:min(step * (i + 1), log_size)],
+		log[step * i:min(step * (i + 1)+1, log_size)],
+		results,
 		verbose,
 	)
 		 for i in range(workers)
 	]
 	with multiprocessing.Pool(processes=workers) as pool:
 		pool.starmap(verify_log_multi_threaded, iterable)
-
 
 	final_result = all(results)
 	if verbose:
