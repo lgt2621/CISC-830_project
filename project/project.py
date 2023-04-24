@@ -69,7 +69,6 @@ def main():
 	end_dict = build_end_dict(cfg)
 	log = load_log(LOG_FILE)
 
-	#results = [1] * WORKERS
 	manager = multiprocessing.Manager()
 	results = manager.list([1]*WORKERS)
 	log_size = len(log)
@@ -90,7 +89,6 @@ def main():
 		pool.starmap(verify_log_multi_threaded, iterable)
 
 
-	print(results)
 	final_result = all(results)
 	if final_result:
 		print("Verification Successful")
