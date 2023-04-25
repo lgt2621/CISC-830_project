@@ -10,7 +10,7 @@ except ImportError:
 import project
 
 
-workers = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40]
+WORKERS = [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40]
 
 
 def main(cfg_file: str, log_file: str, trials: int, results_file: str = "results.csv"):
@@ -18,7 +18,7 @@ def main(cfg_file: str, log_file: str, trials: int, results_file: str = "results
 	with open(results_file, "w") as handle:
 		handle.write(f"workers,{','.join(map(str, range(1, trials + 1)))}\n")
 
-	for w in tqdm(workers, leave=True):
+	for w in tqdm(WORKERS, leave=True):
 		r = []
 		for _ in tqdm(list(range(trials)), leave=False):
 			s = time.time()
