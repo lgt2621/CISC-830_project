@@ -31,8 +31,15 @@ def build_end_dict(cfg: CFG) -> tp.Dict[str, CFGNode]:
 	"""
 	ending_dict = {}
 	for node in cfg.nodes.values():
-		ending_dict[node.end_addr] = node
+		if node.end_addr in ending_dict.keys():
+			ending_dict[node.end_addr][0].update([node.start_addr])
+			ending_dict[node.end_addr][1].update(node.successors)
+		else:
+			ending_dict[node.end_addr] = (set(), set())
+			ending_dict[node.end_addr][0].update([node.start_addr])
+			ending_dict[node.end_addr][1].update(node.successors)
 	return ending_dict
+
 
 
 def load_log(filename: str) -> tp.List[tp.Tuple[str, str]]:

@@ -38,12 +38,12 @@ def verify_log_multi_threaded(id: int, cfg_dict: tp.Dict[str, CFGNode], log: tp.
 			return False
 		
 		# Check that the destination is a valid address
-		if l[1] not in currrent_node.successors:
+		if l[1] not in currrent_node[1]:
 			result[id] = 0
 			return False
 
 		# Check that the node properly executed
-		elif previous is not None and previous != currrent_node.start_addr:
+		elif previous is not None and previous not in currrent_node[0]:
 			result[id] = 0
 			return False
 
