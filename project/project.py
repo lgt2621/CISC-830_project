@@ -31,7 +31,13 @@ def build_end_dict(cfg: CFG) -> tp.Dict[str, CFGNode]:
 	"""
 	ending_dict = {}
 	for node in cfg.nodes.values():
-		ending_dict[node.end_addr] = node
+		if node.end_addr in ending_dict.keys():
+			ending_dict[node.end_addr][0].update([node.start_addr])
+			ending_dict[node.end_addr][1].update(node.successors)
+		else:
+			ending_dict[node.end_addr] = (set(), set())
+			ending_dict[node.end_addr][0].update([node.start_addr])
+			ending_dict[node.end_addr][1].update(node.successors)
 	return ending_dict
 
 
@@ -43,22 +49,17 @@ def load_log(filename: str) -> tp.List[tp.Tuple[str, str]]:
 	Returns:
 		log - a list of all the log entries
 	"""
-	log = []
 	log_file = open(filename, "r")
-	for line in log_file.readlines():
-		line = line.strip()
-		src_addr = "0x" + line[0:4]
-		dest_addr = "0x" + line[4:]
-		
-		if src_addr == "0x0000":  # Logs contain 0000 rows to indicate repeated loops. For simple verification these are not necessary
-			continue
-		else:
-			log.append((src_addr, dest_addr))
-	
+	log = log_file.readlines()
+	log_file.close()
 	return log
  
+def locate_errors(results, step):
+	for i in range(len(results)):
+		if results[i] == 0:
+			print(f"Error detected by thread {i+1} between entries {i * step} and {((i+1)*step)+1}")
 
-def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
+def main(cfg_file: str, log_file: str, workers: int, short: bool, verbose: int) -> bool:
 	"""Verrify a log file.
 	Args:
 		cfg_file (str): the name of the file contianing the control flow graph
@@ -71,7 +72,7 @@ def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 
 	workers = min(workers, multiprocessing.cpu_count())
 
-	if verbose:
+	if verbose > 0:
 		print(f"{cfg_file=}")
 		print(f"{log_file=}")
 		print(f"{workers=}")
@@ -82,6 +83,7 @@ def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 
 	manager = multiprocessing.Manager()
 	results = manager.list([1] * workers)
+	sentinel = manager.Value("b", False)
 	log_size = len(log)
 	step = log_size // workers
 
@@ -92,6 +94,8 @@ def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 		end_dict,
 		log[step * i:min(step * (i + 1)+1, log_size)],
 		results,
+		short,
+		sentinel,
 		verbose,
 	)
 		 for i in range(workers)
@@ -100,20 +104,24 @@ def main(cfg_file: str, log_file: str, workers: int, verbose: bool) -> bool:
 		pool.starmap(verify_log_multi_threaded, iterable)
 
 	final_result = all(results)
-	if verbose:
-		if final_result:
-			print("Verification Successful")
-		else:
-			print("verification Failed")
+	if final_result:
+		print("Verification Successful")
+	elif verbose < 2:
+		print("Verification Failed")
+	else:
+		print("Verification Failed")
+		locate_errors(results, step)
+
 
 	return final_result
 
 
 if __name__ == "__main__":
 	parser = ArgumentParser()
-	parser.add_argument("--cfg_file", type=str)
-	parser.add_argument("--log_file", type=str)
-	parser.add_argument("--workers", type=int, default=1)
-	parser.add_argument("--verbose", action="store_true")
+	parser.add_argument("--cfg_file", "-c", type=str)
+	parser.add_argument("--log_file", "-l", type=str)
+	parser.add_argument("--workers", "-w", type=int, default=1)
+	parser.add_argument("--short", "-s", action="store_true")
+	parser.add_argument("--verbose", "-v", action="count", default=0)
 	args = parser.parse_args()
-	main(args.cfg_file, args.log_file, args.workers, args.verbose)
+	main(args.cfg_file, args.log_file, args.workers, args.short, args.verbose)
