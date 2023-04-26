@@ -47,5 +47,6 @@ def verify_log_multi_threaded(id: int, cfg_dict: tp.Dict[str, CFGNode], log: tp.
 			result[id] = 0
 			return False
 
+		previous = l[1]
 	return True
 
